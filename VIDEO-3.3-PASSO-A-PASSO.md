@@ -81,146 +81,52 @@ graph TB
 
 ---
 
-## ☸️ Parte 2: Criar Cluster EKS
+## ☸️ Parte 2: Cluster EKS (Criado na Aula 01)
 
-### Passo 2: Verificar Pré-requisitos AWS
+**⚠️ O cluster EKS já foi criado na Aula 01!**
 
-```bash
-# Verificar AWS CLI
-aws --version
+Este vídeo **não cria** um novo cluster. Reutilizamos o cluster `cicd-lab` criado anteriormente.
 
-# Verificar credenciais
-aws sts get-caller-identity --profile fiapaws
-
-# Verificar kubectl
-kubectl version --client
-```
-
-### Passo 3: Configurar Variáveis e Discovery de Subnets
+### Passo 2: Verificar Cluster Existente
 
 ```bash
-# Definir região (us-east-1 ou us-west-2)
-export AWS_REGION=us-east-1
-# ou
-# export AWS_REGION=us-west-2
-
-echo "Região selecionada: $AWS_REGION"
-
-# Obter Account ID
-export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --profile fiapaws --query Account --output text)
-echo "Account ID: $AWS_ACCOUNT_ID"
-
-# Discovery de subnets públicas
-echo "🔍 Descobrindo subnets públicas na região $AWS_REGION..."
-
-aws ec2 describe-subnets \
-  --profile fiapaws \
-  --region $AWS_REGION \
-  --filters "Name=map-public-ip-on-launch,Values=true" \
-  --query 'Subnets[*].[SubnetId,AvailabilityZone,CidrBlock]' \
-  --output table
-
-# Obter IDs das subnets
-export SUBNET_IDS=$(aws ec2 describe-subnets \
-  --profile fiapaws \
-  --region $AWS_REGION \
-  --filters "Name=map-public-ip-on-launch,Values=true" \
-  --query 'Subnets[*].SubnetId' \
-  --output text)
-
-echo "Subnets encontradas: $SUBNET_IDS"
-
-# Validar
-SUBNET_COUNT=$(echo $SUBNET_IDS | wc -w | tr -d ' ')
-echo "Total de subnets públicas: $SUBNET_COUNT"
-
-if [ $SUBNET_COUNT -lt 2 ]; then
-  echo "❌ ERRO: EKS requer no mínimo 2 subnets. Encontradas: $SUBNET_COUNT"
-  exit 1
-else
-  echo "✅ Subnets suficientes para criar cluster EKS"
-fi
-```
-
-### Passo 4: Criar Cluster EKS
-
-```bash
-# Criar cluster EKS (AWS Learner Lab compatible)
-echo "🚀 Criando cluster EKS na região $AWS_REGION..."
-
-aws eks create-cluster \
-  --name cicd-lab \
-  --region $AWS_REGION \
-  --role-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/LabRole \
-  --resources-vpc-config subnetIds=$(echo $SUBNET_IDS | tr ' ' ',') \
-  --profile fiapaws
-
-# Aguardar cluster ativo (15-20 min)
-echo "⏳ Aguardando cluster ficar ativo (15-20 minutos)..."
-aws eks wait cluster-active \
-  --name cicd-lab \
-  --region $AWS_REGION \
-  --profile fiapaws
-
-echo "✅ Cluster ativo!"
-```
-
-### Passo 5: Criar Node Group
-
-```bash
-# Criar node group
-echo "🚀 Criando node group..."
-
-aws eks create-nodegroup \
-  --cluster-name cicd-lab \
-  --nodegroup-name workers \
-  --node-role arn:aws:iam::${AWS_ACCOUNT_ID}:role/LabRole \
-  --subnets $(echo $SUBNET_IDS | tr ' ' ',') \
-  --instance-types t3.medium \
-  --scaling-config minSize=2,maxSize=2,desiredSize=2 \
-  --region $AWS_REGION \
-  --profile fiapaws
-
-# Aguardar node group ativo
-echo "⏳ Aguardando node group ficar ativo..."
-aws eks wait nodegroup-active \
-  --cluster-name cicd-lab \
-  --nodegroup-name workers \
-  --region $AWS_REGION \
-  --profile fiapaws
-
-echo "✅ Node group ativo!"
-```
-
-### Passo 6: Configurar kubectl
-
-```bash
-# Configurar acesso ao cluster
-aws eks update-kubeconfig \
-  --name cicd-lab \
-  --region $AWS_REGION \
-  --profile fiapaws
+# Ver clusters disponíveis
+aws eks list-clusters --region us-east-1
 
 # Verificar nodes
 kubectl get nodes
 
-# Ver informações detalhadas
-kubectl get nodes -o wide
+# Ver informações do cluster
+kubectl cluster-info
 ```
 
-**⚠️ Importante - AWS Learner Lab:**
-- Usar sempre `--profile fiapaws` nos comandos AWS CLI
-- Instance types suportados: nano, micro, small, medium, large
-- Máximo de 9 instâncias EC2 concorrentes
-- Máximo de 32 vCPU concorrentes
-- Regiões: us-east-1 ou us-west-2
-- Role: LabRole (já existe no ambiente)
+**Se o cluster não existir:**
+- 📚 Consulte a **Aula 01** para criar o cluster
+- 📂 Repositório: [fiap-dclt-aula01](https://github.com/josenetoo/fiap-dclt-aula01)
+- 🔄 Ou siga o **Vídeo 3.2** (Parte 2: Criar Cluster EKS)
+
+### Passo 3: Reconfigurar kubectl (se necessário)
+
+```bash
+# Reconfigurar acesso ao cluster
+aws eks update-kubeconfig \
+  --name cicd-lab \
+  --region us-east-1
+
+# Testar conexão
+kubectl get nodes
+
+# Ver pods em execução
+kubectl get pods --all-namespaces
+```
+
+**✅ Cluster pronto!** Agora vamos explorar estratégias de deploy avançadas.
 
 ---
 
 ## 🔵🟢 Parte 3: Blue/Green Deploy
 
-### Passo 6: Arquitetura Blue/Green
+### Passo 4: Arquitetura Blue/Green
 
 ```mermaid
 graph TB
@@ -238,7 +144,7 @@ graph TB
     D --> J[Pod Green 3]
 ```
 
-### Passo 7: Entender Manifests Blue/Green
+### Passo 5: Entender Manifests Blue/Green
 
 **Os arquivos já estão criados no repositório em `k8s/blue-green/`**
 
@@ -275,7 +181,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: YOUR_ECR_URI/fiap-todo-api:latest
+        image: 777870534201.dkr.ecr.us-east-1.amazonaws.com/fiap-todo-api:latest
         ports:
         - containerPort: 3000
         env:
@@ -320,7 +226,7 @@ spec:
 
 **🔑 Conceito-chave**: O Service usa o selector `version` para rotear tráfego. Mudando apenas essa label, fazemos o switch instantâneo!
 
-### Passo 8: Deploy Blue/Green
+### Passo 6: Deploy Blue/Green
 
 ```bash
 # Deploy blue (versão atual)
@@ -346,7 +252,7 @@ curl http://localhost:8080/health
 pkill -f "port-forward"
 ```
 
-### Passo 9: Switch Blue → Green
+### Passo 7: Switch Blue → Green
 
 ```bash
 # Verificar versão atual
@@ -364,7 +270,7 @@ LB_URL=$(kubectl get service fiap-todo-api -o jsonpath='{.status.loadBalancer.in
 curl -f http://$LB_URL/health && echo "✅ Health check passed!"
 ```
 
-### Passo 10: Rollback Blue/Green
+### Passo 9: Rollback Blue/Green
 
 ```bash
 # Se green tiver problema, voltar para blue
@@ -378,7 +284,7 @@ echo "✅ Rollback to blue completed!"
 
 ## 🐤 Parte 4: Canary Deploy
 
-### Passo 11: Arquitetura Canary com Istio
+### Passo 10: Arquitetura Canary com Istio
 
 ```mermaid
 graph TB
@@ -401,7 +307,7 @@ graph TB
 - ✅ Rollback instantâneo
 - ✅ Usado em produção por grandes empresas
 
-### Passo 12: Entender Deployments e Services
+### Passo 11: Entender Deployments e Services
 
 **Os arquivos já estão criados em `k8s/canary-istio/`**
 
@@ -435,7 +341,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: YOUR_ECR_URI/fiap-todo-api:latest
+        image: 777870534201.dkr.ecr.us-east-1.amazonaws.com/fiap-todo-api:latest
         ports:
         - containerPort: 3000
         env:
@@ -463,7 +369,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: YOUR_ECR_URI/fiap-todo-api:latest
+        image: 777870534201.dkr.ecr.us-east-1.amazonaws.com/fiap-todo-api:latest
         ports:
         - containerPort: 3000
         env:
@@ -491,7 +397,7 @@ spec:
 - Service seleciona apenas `app: fiap-todo-api` (pega ambos)
 - Estes são arquivos Kubernetes padrão - funcionam sem Istio!
 
-### Passo 13: Instalar Istio
+### Passo 12: Instalar Istio
 
 **Agora vamos adicionar o Istio por cima da infraestrutura:**
 
@@ -536,12 +442,29 @@ kubectl get svc -n istio-system
 - ✅ `istio-ingressgateway`: Gateway de entrada
 - ✅ `istio-egressgateway`: Gateway de saída (opcional)
 
-### Passo 14: Entender Recursos Istio
+### Passo 13: Entender Recursos Istio
 
-**Os recursos Istio já estão em `k8s/canary-istio/virtualservice.yaml`**
+**Os recursos Istio já estão em `k8s/canary-istio/`**
 
-Este é o arquivo-chave que controla o tráfego:
+**Gateway (`gateway.yaml`)** - Expõe a aplicação externamente:
+```yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: fiap-todo-gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+```
 
+**VirtualService (`virtualservice.yaml`)** - Controla o tráfego:
 ```yaml
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
@@ -549,7 +472,9 @@ metadata:
   name: fiap-todo-api
 spec:
   hosts:
-  - fiap-todo-api
+  - "*"
+  gateways:
+  - fiap-todo-gateway
   http:
   - match:
     - headers:
@@ -586,12 +511,13 @@ spec:
 ```
 
 **🔑 Conceito-chave**: 
+- **Gateway**: Expõe a aplicação externamente via Istio Ingress Gateway
 - **VirtualService**: Controla a % de tráfego por peso (não depende de réplicas!)
 - **DestinationRule**: Define os subsets (v1 e v2) baseados em labels
 - **Header routing**: `x-canary: true` permite testar canary diretamente
 - **Weights**: 90% stable + 10% canary = controle preciso
 
-### Passo 15: Deploy e Testar Canary
+### Passo 14: Deploy e Testar Canary
 
 **Deploy (todos os sistemas):**
 ```bash
@@ -658,7 +584,7 @@ curl -H "x-canary: true" http://$GATEWAY_URL/health
 # Sempre retorna v2.0
 ```
 
-### Passo 16: Ajustar Peso do Canary
+### Passo 15: Ajustar Peso do Canary
 
 ```bash
 # Aumentar canary para 25%
@@ -708,7 +634,7 @@ kubectl patch virtualservice fiap-todo-api --type merge -p '
 echo "✅ Canary promovido para 100%!"
 ```
 
-### Passo 17: Rollback Instantâneo
+### Passo 16: Rollback Instantâneo
 
 ```bash
 # Se detectar problema, voltar para v1 instantaneamente
@@ -729,79 +655,19 @@ echo "✅ Rollback instantâneo para v1!"
 
 ---
 
-## 🔄 Parte 5: Rolling Update
-
-### Passo 16: Fluxo Rolling Update
-
-```mermaid
-sequenceDiagram
-    participant K as kubectl
-    participant D as Deployment
-    participant O as Old Pods
-    participant N as New Pods
-    
-    K->>D: Update image
-    D->>N: Create new pod 1
-    N->>D: Ready
-    D->>O: Terminate old pod 1
-    D->>N: Create new pod 2
-    N->>D: Ready
-    D->>O: Terminate old pod 2
-    Note over D: Continua até todos pods
-```
-
-### Passo 17: Configurar Rolling Update
-
-```yaml
-# deployment.yaml
-spec:
-  replicas: 10
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 2        # Máximo de pods extras durante update
-      maxUnavailable: 1  # Máximo de pods indisponíveis
-```
-
-### Passo 18: Executar Rolling Update
-
-```bash
-# Update da imagem
-kubectl set image deployment/fiap-todo-api \
-  api=YOUR_ECR_URI/fiap-todo-api:v2.0
-
-# Acompanhar rollout
-kubectl rollout status deployment/fiap-todo-api
-
-# Ver histórico
-kubectl rollout history deployment/fiap-todo-api
-```
-
-### Passo 19: Rollback Rolling Update
-
-```bash
-# Rollback para versão anterior
-kubectl rollout undo deployment/fiap-todo-api
-
-# Rollback para revisão específica
-kubectl rollout undo deployment/fiap-todo-api --to-revision=2
-
-# Pausar rollout (se detectar problema)
-kubectl rollout pause deployment/fiap-todo-api
-
-# Retomar rollout
-kubectl rollout resume deployment/fiap-todo-api
-```
-
----
-
 ## 🚀 Parte 6: Pipeline com Estratégias
 
-### Passo 20: Workflow Canary Deploy com Istio
+### Passo 17: Criar Workflow Canary Deploy
 
-**Workflow que criaremos durante a aula:**
+**Vamos criar um workflow que ajusta o tráfego Canary via Istio!**
 
-```yaml
+**💡 Conceito**: A porcentagem do Canary é definida como **input manual** no GitHub Actions, permitindo ajustar o tráfego sem modificar código.
+
+**Linux/Mac:**
+```bash
+mkdir -p .github/workflows
+
+cat > .github/workflows/canary-deploy.yml << 'EOF'
 name: 🐤 Canary Deploy with Istio
 
 on:
@@ -855,7 +721,6 @@ jobs:
           
           echo "🎯 Adjusting traffic: Stable $STABLE_PCT% | Canary $CANARY_PCT%"
           
-          # Atualizar VirtualService com novo peso
           kubectl patch virtualservice fiap-todo-api --type merge -p "
           {
             \"spec\": {
@@ -888,18 +753,115 @@ jobs:
           
           echo "✅ Rollback completed - 100% on stable!"
       
-      - name: 🧪 Monitor Canary
+      - name: 📊 Deployment Summary
+        run: |
+          echo "## 🐤 Canary Deployment with Istio" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Action**: ${{ github.event.inputs.action }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.action }}" == "deploy" ]; then
+            echo "**Canary Weight**: ${{ github.event.inputs.canary-percentage }}%" >> $GITHUB_STEP_SUMMARY
+            echo "**Stable Weight**: $((100 - ${{ github.event.inputs.canary-percentage }}))%" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status**: Rolled back to 100% stable" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -l app=fiap-todo-api >> $GITHUB_STEP_SUMMARY
+EOF
+
+echo "✅ Workflow criado!"
+```
+
+**Windows (PowerShell):**
+```powershell
+New-Item -ItemType Directory -Force -Path .github\workflows
+
+@'
+name: 🐤 Canary Deploy with Istio
+
+on:
+  workflow_dispatch:
+    inputs:
+      canary-percentage:
+        description: 'Canary percentage (0-100)'
+        required: true
+        default: '10'
+        type: choice
+        options:
+          - '10'
+          - '25'
+          - '50'
+          - '100'
+      action:
+        description: 'Action'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - 'deploy'
+          - 'rollback'
+
+jobs:
+  canary-deploy:
+    name: 🐤 Canary with Istio
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+      
+      - name: 🔑 Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+      
+      - name: ☸️ Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name cicd-lab --region us-east-1
+      
+      - name: 🐤 Adjust Canary Traffic
         if: github.event.inputs.action == 'deploy'
         run: |
-          echo "📊 Monitoring canary deployment..."
+          CANARY_PCT=${{ github.event.inputs.canary-percentage }}
+          STABLE_PCT=$((100 - CANARY_PCT))
           
-          # Obter métricas do Istio
-          kubectl get virtualservice fiap-todo-api -o yaml
+          echo "🎯 Adjusting traffic: Stable $STABLE_PCT% | Canary $CANARY_PCT%"
           
-          # Verificar pods
-          kubectl get pods -l app=fiap-todo-api
+          kubectl patch virtualservice fiap-todo-api --type merge -p "
+          {
+            \"spec\": {
+              \"http\": [{
+                \"route\": [
+                  {\"destination\": {\"host\": \"fiap-todo-api\", \"subset\": \"v1\"}, \"weight\": $STABLE_PCT},
+                  {\"destination\": {\"host\": \"fiap-todo-api\", \"subset\": \"v2\"}, \"weight\": $CANARY_PCT}
+                ]
+              }]
+            }
+          }"
           
-          echo "✅ Canary is running. Monitor metrics in Kiali/Grafana"
+          echo "✅ Traffic adjusted successfully!"
+      
+      - name: 🔙 Rollback to Stable
+        if: github.event.inputs.action == 'rollback'
+        run: |
+          echo "🔙 Rolling back to 100% stable..."
+          
+          kubectl patch virtualservice fiap-todo-api --type merge -p '
+          {
+            "spec": {
+              "http": [{
+                "route": [
+                  {"destination": {"host": "fiap-todo-api", "subset": "v1"}, "weight": 100}
+                ]
+              }]
+            }
+          }'
+          
+          echo "✅ Rollback completed - 100% on stable!"
       
       - name: 📊 Deployment Summary
         run: |
@@ -915,24 +877,100 @@ jobs:
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Pods Status:" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
           kubectl get pods -l app=fiap-todo-api >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+'@ | Out-File -FilePath .github\workflows\canary-deploy.yml -Encoding UTF8
+
+Write-Host "✅ Workflow criado!"
 ```
 
-**Vantagens desta pipeline**:
+### Passo 18: Como Funciona a Porcentagem do Canary
+
+**🎯 Definição da Porcentagem:**
+
+1. **Via GitHub Actions UI** (Manual):
+   - Acesse: `Actions` → `Canary Deploy with Istio` → `Run workflow`
+   - Escolha a porcentagem: `10%`, `25%`, `50%`, ou `100%`
+   - Escolha a ação: `deploy` ou `rollback`
+
+2. **O que acontece internamente**:
+```bash
+# Exemplo: Escolheu 25% canary
+CANARY_PCT=25
+STABLE_PCT=75  # Calculado automaticamente (100 - 25)
+
+# Istio ajusta o VirtualService
+kubectl patch virtualservice fiap-todo-api --type merge -p '{
+  "spec": {
+    "http": [{
+      "route": [
+        {"destination": {"host": "fiap-todo-api", "subset": "v1"}, "weight": 75},
+        {"destination": {"host": "fiap-todo-api", "subset": "v2"}, "weight": 25}
+      ]
+    }]
+  }
+}'
+```
+
+3. **Resultado**:
+   - 75% das requisições → Stable (v1.0)
+   - 25% das requisições → Canary (v2.0)
+   - **Sem restart de pods!**
+   - **Sem mudança no número de réplicas!**
+
+**🔑 Vantagens desta abordagem**:
 - ✅ Ajuste de tráfego via Istio (não depende de réplicas)
 - ✅ Opções pré-definidas (10%, 25%, 50%, 100%)
 - ✅ Ação de rollback integrada
 - ✅ Sem downtime ou restart de pods
-- ✅ Monitoramento via Istio metrics
+- ✅ Controle fino de tráfego
+
+### Passo 19: Testar Pipeline Canary
+
+**Commit e push:**
+```bash
+git add .github/workflows/canary-deploy.yml
+git commit -m "feat: add canary deploy workflow with Istio"
+git push origin main
+```
+
+**Executar no GitHub:**
+1. Acesse: `Actions` → `🐤 Canary Deploy with Istio`
+2. Clique em `Run workflow`
+3. Selecione:
+   - **Canary percentage**: `25`
+   - **Action**: `deploy`
+4. Clique em `Run workflow`
+
+**Verificar resultado:**
+```bash
+# Ver distribuição de tráfego
+export GATEWAY_URL=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+# Testar 20 vezes
+for i in {1..20}; do 
+  curl -s http://$GATEWAY_URL/health | jq -r '.version'
+done | sort | uniq -c
+
+# Resultado esperado com 25% canary:
+# 15 v1.0  (75%)
+#  5 v2.0  (25%)
+```
+
+**Aumentar para 50%:**
+1. Execute workflow novamente
+2. Selecione: **Canary percentage**: `50`
+3. Teste novamente - deve ter ~50/50
+
+**Rollback:**
+1. Execute workflow
+2. Selecione: **Action**: `rollback`
+3. Volta para 100% stable instantaneamente!
 
 ---
 
 ## 🎓 Parte 7: Conceitos Aprendidos
 
-### Passo 21: Matriz de Decisão
+### Passo 20: Matriz de Decisão
 
 ```mermaid
 graph TB
@@ -959,7 +997,7 @@ graph TB
 
 ## 🧹 Parte 8: Limpeza
 
-### Passo 22: Limpar Recursos
+### Passo 21: Limpar Recursos
 
 ```bash
 # Deletar deployments

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: YOUR_ECR_URI/fiap-todo-api:latest
+        image: 777870534201.dkr.ecr.us-east-1.amazonaws.com/fiap-todo-api:latest
         ports:
         - containerPort: 3000
         env:

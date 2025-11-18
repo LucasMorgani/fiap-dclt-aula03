@@ -4,7 +4,9 @@ metadata:
   name: fiap-todo-api
 spec:
   hosts:
-  - fiap-todo-api
+  - "*"
+  gateways:
+  - fiap-todo-gateway
   http:
   - match:
     - headers:
