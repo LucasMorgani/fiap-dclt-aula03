@@ -1,0 +1,100 @@
+name: 🐤 Canary Deploy with Istio
+
+on:
+  workflow_dispatch:
+    inputs:
+      canary-percentage:
+        description: 'Canary percentage (0-100)'
+        required: true
+        default: '10'
+        type: choice
+        options:
+          - '10'
+          - '25'
+          - '50'
+          - '100'
+      action:
+        description: 'Action'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - 'deploy'
+          - 'rollback'
+
+jobs:
+  canary-deploy:
+    name: 🐤 Canary with Istio
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+      
+      - name: 🔑 Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+      
+      - name: ☸️ Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name cicd-lab --region us-east-1
+      
+      - name: 🐤 Adjust Canary Traffic
+        if: github.event.inputs.action == 'deploy'
+        run: |
+          CANARY_PCT=${{ github.event.inputs.canary-percentage }}
+          STABLE_PCT=$((100 - CANARY_PCT))
+          
+          echo "🎯 Adjusting traffic: Stable $STABLE_PCT% | Canary $CANARY_PCT%"
+          
+          kubectl patch virtualservice fiap-todo-api --type merge -p "
+          {
+            \"spec\": {
+              \"http\": [{
+                \"route\": [
+                  {\"destination\": {\"host\": \"fiap-todo-api\", \"subset\": \"v1\"}, \"weight\": $STABLE_PCT},
+                  {\"destination\": {\"host\": \"fiap-todo-api\", \"subset\": \"v2\"}, \"weight\": $CANARY_PCT}
+                ]
+              }]
+            }
+          }"
+          
+          echo "✅ Traffic adjusted successfully!"
+      
+      - name: 🔙 Rollback to Stable
+        if: github.event.inputs.action == 'rollback'
+        run: |
+          echo "🔙 Rolling back to 100% stable..."
+          
+          kubectl patch virtualservice fiap-todo-api --type merge -p '
+          {
+            "spec": {
+              "http": [{
+                "route": [
+                  {"destination": {"host": "fiap-todo-api", "subset": "v1"}, "weight": 100}
+                ]
+              }]
+            }
+          }'
+          
+          echo "✅ Rollback completed - 100% on stable!"
+      
+      - name: 📊 Deployment Summary
+        run: |
+          echo "## 🐤 Canary Deployment with Istio" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Action**: ${{ github.event.inputs.action }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.action }}" == "deploy" ]; then
+            echo "**Canary Weight**: ${{ github.event.inputs.canary-percentage }}%" >> $GITHUB_STEP_SUMMARY
+            echo "**Stable Weight**: $((100 - ${{ github.event.inputs.canary-percentage }}))%" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status**: Rolled back to 100% stable" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -l app=fiap-todo-api >> $GITHUB_STEP_SUMMARY
