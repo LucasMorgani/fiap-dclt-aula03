@@ -17,8 +17,8 @@ metadata:
 # ESPECIFICAÇÃO DO SERVICE
 # ============================================
 spec:
-  type: ClusterIP                  # Tipo: interno ao cluster
-                                   # Outros tipos: LoadBalancer, NodePort
+  type: LoadBalancer               # Tipo: expõe externamente via AWS ELB
+                                   # Outros tipos: ClusterIP, NodePort
   
   # ============================================
   # PORTAS
