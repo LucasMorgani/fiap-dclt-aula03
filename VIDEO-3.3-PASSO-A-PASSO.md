@@ -284,28 +284,116 @@ echo "✅ Rollback to blue completed!"
 
 ## 🐤 Parte 4: Canary Deploy
 
-### Passo 10: Arquitetura Canary com Istio
+### Passo 10: O que é Istio?
+
+**Istio** é uma **Service Mesh** - uma camada de infraestrutura que gerencia comunicação entre serviços.
+
+**🔑 Conceitos principais:**
+
+**Service Mesh:**
+- Camada dedicada para comunicação entre microserviços
+- Não requer mudanças no código da aplicação
+- Injeta um **sidecar proxy** (Envoy) em cada pod
+- Controla todo o tráfego de rede
+
+**Componentes do Istio:**
+
+1. **Data Plane (Envoy Proxy)**:
+   - Proxy leve e de alta performance
+   - Injected como sidecar em cada pod
+   - Intercepta todo tráfego de entrada/saída
+   - Aplica regras de roteamento, retry, timeout
+
+2. **Control Plane (Istiod)**:
+   - Gerencia e configura os proxies
+   - Distribui certificados para mTLS
+   - Converte regras de alto nível em configuração Envoy
+   - Monitora saúde dos serviços
+
+**Por que usar Istio para Canary?**
+- ✅ **Controle preciso**: 90/10, 75/25, 50/50 - qualquer proporção
+- ✅ **Independente de réplicas**: 2 pods stable + 2 pods canary = 90/10 de tráfego
+- ✅ **Roteamento avançado**: Headers, cookies, IP, user-agent
+- ✅ **Métricas automáticas**: Latência, taxa de erro, throughput
+- ✅ **Rollback instantâneo**: Muda peso sem restart
+- ✅ **mTLS automático**: Comunicação criptografada entre serviços
+
+### Passo 10.1: Arquitetura Completa com Istio
 
 ```mermaid
 graph TB
-    A[Istio Gateway] --> B[VirtualService]
+    subgraph "AWS Cloud"
+        ELB[AWS ELB<br/>LoadBalancer]
+    end
     
-    B -->|90% weight| C[Stable v1.0]
-    B -->|10% weight| D[Canary v2.0]
+    subgraph "Kubernetes Cluster"
+        subgraph "istio-system namespace"
+            IG[Istio Ingress Gateway<br/>Pod com Envoy Proxy]
+            ISTIOD[Istiod<br/>Control Plane]
+        end
+        
+        subgraph "default namespace"
+            GW[Gateway<br/>fiap-todo-gateway]
+            VS[VirtualService<br/>90% v1 / 10% v2]
+            DR[DestinationRule<br/>Subsets: v1, v2]
+            SVC[Service<br/>fiap-todo-api]
+            
+            subgraph "Stable v1.0"
+                S1[Pod Stable 1<br/>+ Envoy Sidecar]
+                S2[Pod Stable 2<br/>+ Envoy Sidecar]
+            end
+            
+            subgraph "Canary v2.0"
+                C1[Pod Canary 1<br/>+ Envoy Sidecar]
+                C2[Pod Canary 2<br/>+ Envoy Sidecar]
+            end
+        end
+    end
     
-    C --> E[Pod Stable 1]
-    C --> F[Pod Stable 2]
+    Internet([Internet]) --> ELB
+    ELB --> IG
+    IG --> GW
+    GW --> VS
+    VS --> DR
+    DR --> SVC
+    SVC --> S1
+    SVC --> S2
+    SVC --> C1
+    SVC --> C2
     
-    D --> G[Pod Canary 1]
-    D --> H[Pod Canary 2]
+    ISTIOD -.->|Configura| IG
+    ISTIOD -.->|Configura| S1
+    ISTIOD -.->|Configura| S2
+    ISTIOD -.->|Configura| C1
+    ISTIOD -.->|Configura| C2
 ```
 
-**Por que Istio?**
-- ✅ Controle preciso de tráfego por peso (não depende de número de réplicas)
-- ✅ Roteamento inteligente baseado em headers, cookies, etc
-- ✅ Métricas e observabilidade integradas
-- ✅ Rollback instantâneo
-- ✅ Usado em produção por grandes empresas
+**🔍 Fluxo de Requisição:**
+
+1. **Usuário** → AWS ELB (LoadBalancer externo)
+2. **ELB** → Istio Ingress Gateway (porta 80)
+3. **Ingress Gateway** → Gateway resource (fiap-todo-gateway)
+4. **Gateway** → VirtualService (aplica regras de roteamento)
+5. **VirtualService** → DestinationRule (identifica subsets v1/v2)
+6. **DestinationRule** → Service Kubernetes
+7. **Service** → Pods (com Envoy sidecar)
+8. **Envoy Sidecar** → Container da aplicação
+
+**🎯 Onde acontece o Canary:**
+- **VirtualService**: Define 90% v1 / 10% v2
+- **Envoy Proxy**: Aplica o peso e roteia requisições
+- **Sem mudança nos pods**: Apenas configuração de rede!
+
+**💡 Diferença vs Kubernetes puro:**
+
+| Aspecto | Kubernetes Puro | Istio |
+|---------|-----------------|-------|
+| **Controle de tráfego** | Baseado em réplicas | Baseado em peso |
+| **Canary 10%** | 1 pod canary + 9 stable | 2 pods canary + 2 stable (peso 10/90) |
+| **Mudança de %** | Escalar pods | Mudar VirtualService |
+| **Rollback** | Escalar pods | Mudar peso (instantâneo) |
+| **Métricas** | Prometheus manual | Automático via Envoy |
+| **mTLS** | Manual | Automático |
 
 ### Passo 11: Entender Deployments e Services
 
