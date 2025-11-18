@@ -40,7 +40,7 @@ spec:
       # ============================================
       containers:
       - name: fiap-todo-api        # Nome do container
-        image: YOUR_ECR_URI/fiap-todo-api:latest  # Imagem Docker (será substituída pelo Kustomize)
+        image: fiap-todo-api:latest  # Placeholder - será substituída pelo Kustomize
         
         # Porta exposta pelo container
         ports:

@@ -19,7 +19,7 @@ spec:
   template:
     spec:
       containers:
-      - name: api                  # Nome do container (deve corresponder)
+      - name: fiap-todo-api        # Nome do container (deve corresponder ao base)
         
         # ============================================
         # RECURSOS DE PRODUÇÃO

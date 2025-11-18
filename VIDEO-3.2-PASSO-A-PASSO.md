@@ -467,8 +467,10 @@ helm create fiap-todo-chart
 
 ### Passo 18: Configurar values.yaml
 
+**O `helm create` gera um values.yaml completo. Vamos customizar apenas o necessário:**
+
 ```bash
-# Editar values
+# Editar values (manter estrutura do helm create, customizar valores)
 cat > fiap-todo-chart/values.yaml << 'EOF'
 replicaCount: 2
 
@@ -477,10 +479,36 @@ image:
   pullPolicy: IfNotPresent
   tag: "latest"
 
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+securityContext: {}
+
 service:
   type: LoadBalancer
   port: 80
   targetPort: 3000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
 
 resources:
   limits:
@@ -490,17 +518,45 @@ resources:
     cpu: 100m
     memory: 128Mi
 
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
 autoscaling:
   enabled: false
   minReplicas: 2
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
 
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
 env:
   - name: NODE_ENV
     value: "production"
+  - name: PORT
+    value: "3000"
 EOF
 ```
+
+**⚠️ Importante:**
+- O `helm create` gera templates que esperam esses valores
+- Se faltar algum campo, você terá erro de "nil pointer"
+- Campos vazios (`{}` ou `[]`) são válidos e desabilitam a funcionalidade
 
 ### Passo 19: Deploy com Helm
 

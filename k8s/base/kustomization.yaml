@@ -33,6 +33,9 @@ commonLabels:
 # ============================================
 # Configuração de imagens Docker
 # Permite substituir tags sem modificar os YAMLs
+# O "name" deve corresponder ao placeholder no deployment.yaml
+# O "newName" é a imagem real no ECR
 images:
-- name: YOUR_ECR_URI/fiap-todo-api # URI da imagem (substituir pelo ECR real)
+- name: fiap-todo-api              # Nome do placeholder no deployment.yaml
+  newName: 777870534201.dkr.ecr.us-east-1.amazonaws.com/fiap-todo-api  # URI real do ECR
   newTag: latest                   # Tag da imagem (será substituída no CI/CD)
