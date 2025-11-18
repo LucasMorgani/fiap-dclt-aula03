@@ -687,8 +687,7 @@ jobs:
         run: |
           aws eks update-kubeconfig \
             --name ${{ env.CLUSTER_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --profile fiapaws
+            --region ${{ env.AWS_REGION }}
       
       - name: 🔧 Setup Kustomize
         run: |
@@ -777,8 +776,7 @@ jobs:
         run: |
           aws eks update-kubeconfig \
             --name `${{ env.CLUSTER_NAME }} \
-            --region `${{ env.AWS_REGION }} \
-            --profile fiapaws
+            --region `${{ env.AWS_REGION }}
       
       - name: 🔧 Setup Kustomize
         run: |
