@@ -72,7 +72,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    service: 'FIAP Todo API',
+    service: 'FIAP Todo API - Demo',
     version: process.env.VERSION || '1.0.0',
     environment: process.env.NODE_ENV || 'development',
     deployment: {
