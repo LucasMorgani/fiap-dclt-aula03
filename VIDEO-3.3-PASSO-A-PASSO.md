@@ -8,27 +8,46 @@
 
 ## 📋 Pré-requisitos
 
-**⚠️ Cluster EKS Necessário**
+**⚠️ Importante: Cluster EKS da Aula 01 ou Vídeo 3.2**
 
-Este vídeo assume que você já tem um cluster EKS configurado:
+Este vídeo **reutiliza** o cluster EKS criado anteriormente. Não precisa criar um novo!
 
-- ✅ **Cluster criado** na Aula 01 ou Vídeo 3.2
-- ✅ **kubectl configurado** e conectado ao cluster
-- ✅ **Aplicação deployada** com Kustomize (Vídeo 3.2)
+**Opções:**
 
-**Se não tiver cluster:**
-1. 📚 Consulte a **Aula 01** para criar o cluster
-2. 📂 Repositório: [fiap-dclt-aula01](https://github.com/josenetoo/fiap-dclt-aula01)
-3. Ou siga o **Vídeo 3.2** (Parte 2: Criar Cluster EKS)
+1. **Cluster já existe e está ativo (Aula 01 ou Vídeo 3.2):**
+   - ✅ Use o mesmo cluster: `cicd-lab`
+   - ✅ Verifique se está conectado: `kubectl get nodes`
+   - ✅ Continue com este vídeo
 
-**Verificar cluster:**
+2. **Cluster foi deletado:**
+   - 📚 Consulte os comandos da **Aula 01**
+   - 📂 Repositório: [fiap-dclt-aula01](https://github.com/josenetoo/fiap-dclt-aula01)
+   - 🔄 Ou siga o **Vídeo 3.2** (Parte 2: Criar Cluster EKS)
+   - Recrie o cluster usando os mesmos comandos
+
+3. **Primeira vez (não fez Aula 01 nem Vídeo 3.2):**
+   - 📚 Vá para **Vídeo 3.2** primeiro
+   - Crie o cluster EKS
+   - Depois volte para este vídeo
+
+**Verificar se cluster existe:**
 ```bash
 # Ver clusters disponíveis
 aws eks list-clusters --region us-east-1
 
 # Testar conexão
 kubectl get nodes
+
+# Reconfigurar kubectl (se necessário)
+aws eks update-kubeconfig \
+  --name cicd-lab \
+  --region us-east-1
 ```
+
+**Pré-requisitos adicionais:**
+- ✅ **kubectl configurado** e conectado ao cluster
+- ✅ **Aplicação deployada** com Kustomize (Vídeo 3.2)
+- ✅ **Service LoadBalancer** funcionando
 
 ---
 
