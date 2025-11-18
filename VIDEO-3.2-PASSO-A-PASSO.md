@@ -665,10 +665,14 @@ LB_URL=$(kubectl get service prod-fiap-todo-api \
 echo "API URL: http://$LB_URL"
 
 # Testar API
-curl http://$LB_URL/todos
-curl -X POST http://$LB_URL/todos \
+curl http://$LB_URL/health
+curl http://$LB_URL/api/todos
+curl http://$LB_URL/api/stats
+
+# Criar novo todo
+curl -X POST http://$LB_URL/api/todos \
   -H "Content-Type: application/json" \
-  -d '{"title":"Deploy K8s","priority":"high"}'
+  -d '{"title":"Deploy K8s na FIAP","priority":"high","category":"education"}'
 ```
 
 ---

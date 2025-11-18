@@ -14,9 +14,9 @@ WORKDIR /app
 COPY app/package*.json ./
 
 # Instalar dependências de produção
-# npm ci: instalação limpa e determinística
-# --only=production: apenas deps de produção
-RUN npm ci --only=production && npm cache clean --force
+# npm install: instala deps e gera lock file se não existir
+# --omit=dev: omite dependências de desenvolvimento
+RUN npm install --omit=dev && npm cache clean --force
 
 # ============================================
 # CÓDIGO FONTE

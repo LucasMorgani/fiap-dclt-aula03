@@ -67,29 +67,30 @@ echo "ECR URI: $ECR_URI"
 
 ---
 
-## 🐳 Parte 3: Dockerfile Otimizado
+## Parte 3: Dockerfile Otimizado
 
 ### Passo 4: Arquitetura Multi-stage
 
 ```mermaid
 graph TB
-    subgraph "Stage 1: Dependencies"
-        A[node:18-alpine] --> B[npm ci]
-        B --> C[node_modules]
+    subgraph "Stage 1: Builder"
+        A[node:20-alpine] --> B[npm install --omit=dev]
+        B --> C[node_modules produção]
+        C --> D[Copiar src/]
+        D --> E[Criar usuário nodejs]
     end
     
-    subgraph "Stage 2: Builder"
-        D[npm ci + build] --> E[Testes]
-        E --> F[Artifacts]
+    subgraph "Stage 2: Runtime"
+        F[node:20-alpine limpo] --> G[Copiar node_modules]
+        G --> H[Copiar src/]
+        H --> I[Copiar usuário]
+        I --> J[USER nodejs]
+        J --> K[Imagem Final Segura]
     end
     
-    subgraph "Stage 3: Runtime"
-        G[Copiar deps] --> H[Copiar código]
-        H --> I[Imagem final]
-    end
-    
-    C --> G
-    F --> H
+    E --> G
+    E --> H
+    E --> I
 ```
 
 ### Passo 5: Ver Dockerfile Multi-stage
@@ -101,32 +102,37 @@ cat Dockerfile
 
 **Dockerfile:**
 ```dockerfile
-# Stage 1: Dependencies
-FROM node:18-alpine AS deps
+# Stage 1: Builder
+FROM node:20-alpine AS builder
 WORKDIR /app
-COPY app/package*.json ./
-RUN npm ci --only=production
 
-# Stage 2: Builder
-FROM node:18-alpine AS builder
-WORKDIR /app
+# Copiar package files
 COPY app/package*.json ./
-RUN npm ci
-COPY app/ ./
-RUN npm run build --if-present
-RUN npm test
 
-# Stage 3: Runtime
-FROM node:18-alpine
-WORKDIR /app
+# Instalar dependências de produção
+# npm install: instala e gera lock file se necessário
+# --omit=dev: omite dependências de desenvolvimento
+RUN npm install --omit=dev && npm cache clean --force
+
+# Copiar código fonte
+COPY app/src/ ./src/
 
 # Criar usuário não-root
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copiar apenas o necessário
-COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/src ./src
+# Stage 2: Runtime
+FROM node:20-alpine AS runtime
+WORKDIR /app
+
+# Copiar artefatos do builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/src ./src
+
+# Copiar usuário
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
 
 # Mudar para usuário não-root
 USER nodejs
@@ -150,8 +156,10 @@ docker images fiap-todo-api:local
 # Rodar container
 docker run -d --name todo-test -p 3000:3000 fiap-todo-api:local
 
-# Testar
-curl http://localhost:3000/todos
+# Testar endpoints
+curl http://localhost:3000/health
+curl http://localhost:3000/api/todos
+curl http://localhost:3000/api/stats
 
 # Limpar
 docker stop todo-test && docker rm todo-test
@@ -243,8 +251,14 @@ graph LR
 
 ### Passo 11: Criar Workflow (Faremos juntos na aula)
 
-**Workflow que criaremos:**
-```yaml
+**Vamos criar o workflow durante a aula:**
+
+```bash
+# Criar diretório de workflows
+mkdir -p .github/workflows
+
+# Criar arquivo do workflow
+cat > .github/workflows/docker-build.yml << 'EOF'
 name: 🐳 Docker Build and Push
 
 on:
@@ -316,7 +330,16 @@ jobs:
           echo "- \`latest\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`v1.${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+EOF
 ```
+
+**Explicação do workflow:**
+- ✅ **Trigger**: Push em `main` ou manual (`workflow_dispatch`)
+- ✅ **Paths**: Só executa se mudar `app/` ou `Dockerfile`
+- ✅ **Tags**: Gera 3 tags (latest, SHA, versão)
+- ✅ **Cache**: Usa GitHub Actions cache para acelerar builds
+- ✅ **Scan**: Escaneia vulnerabilidades no ECR
+- ✅ **Summary**: Mostra resumo no GitHub Actions
 
 ---
 
