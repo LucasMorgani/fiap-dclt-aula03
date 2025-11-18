@@ -587,7 +587,48 @@ helm rollback fiap-todo 1
 
 ## 🚀 Parte 6: Pipeline de Deploy
 
-### Passo 20: Fluxo do Pipeline
+### Passo 20: Configurar Secrets do GitHub
+
+**Antes de criar o workflow, precisamos adicionar os secrets necessários:**
+
+**No GitHub:**
+1. Vá para: `Settings` → `Secrets and variables` → `Actions`
+2. Clique em `New repository secret`
+
+**Secrets necessários:**
+
+| Secret | Valor | Onde Obter |
+|--------|-------|------------|
+| `AWS_ACCESS_KEY_ID` | `AKIA...` | AWS Learner Lab → AWS Details |
+| `AWS_SECRET_ACCESS_KEY` | `wJalr...` | AWS Learner Lab → AWS Details |
+| `AWS_SESSION_TOKEN` | `IQoJb3...` | AWS Learner Lab → AWS Details |
+| `ECR_URI` | `777870534201.dkr.ecr.us-east-1.amazonaws.com` | Output do ECR |
+
+**⚠️ Nota sobre CLUSTER_NAME:**
+- O `CLUSTER_NAME` está **hard-coded** no workflow como `cicd-lab`
+- Se seu cluster tiver outro nome, altere no workflow
+- Não precisa ser secret (não é sensível)
+
+**Comandos para obter valores:**
+
+```bash
+# Ver ECR URI
+aws ecr describe-repositories \
+  --repository-names fiap-todo-api \
+  --region us-east-1 \
+  --query 'repositories[0].repositoryUri' \
+  --output text
+
+# Ver nome do cluster
+aws eks list-clusters --region us-east-1
+
+# Obter credenciais do Learner Lab
+# Copie de: AWS Details → Show → AWS CLI credentials
+```
+
+---
+
+### Passo 21: Fluxo do Pipeline
 
 ```mermaid
 graph LR
@@ -599,7 +640,7 @@ graph LR
     F --> G[Smoke Test]
 ```
 
-### Passo 21: Criar Workflow de Deploy (Faremos juntos na aula)
+### Passo 22: Criar Workflow de Deploy (Faremos juntos na aula)
 
 **Vamos criar o workflow durante a aula:**
 
@@ -801,7 +842,7 @@ jobs:
 
 ## 🧪 Parte 7: Testar Deploy
 
-### Passo 22: Trigger Deploy
+### Passo 23: Trigger Deploy
 
 ```bash
 # Fazer mudança na aplicação
@@ -817,7 +858,7 @@ git push origin main
 # 2. Deploy to Kubernetes (inicia automaticamente)
 ```
 
-### Passo 23: Verificar Deploy
+### Passo 24: Verificar Deploy
 
 ```bash
 # Ver pods
@@ -847,7 +888,7 @@ curl -X POST http://$LB_URL/api/todos \
 
 ## 🎓 Parte 8: Conceitos Aprendidos
 
-### Passo 24: Fluxo Completo
+### Passo 25: Fluxo Completo
 
 ```mermaid
 graph LR
