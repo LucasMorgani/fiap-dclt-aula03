@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fiap-todo-green
+  labels:
+    app: fiap-todo-api
+    version: green
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fiap-todo-api
+      version: green
+  template:
+    metadata:
+      labels:
+        app: fiap-todo-api
+        version: green
+    spec:
+      containers:
+      - name: api
+        image: YOUR_ECR_URI/fiap-todo-api:v2.0
+        ports:
+        - containerPort: 3000
+        env:
+        - name: VERSION
+          value: "green"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

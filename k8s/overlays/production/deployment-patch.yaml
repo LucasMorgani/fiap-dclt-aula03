@@ -1,0 +1,34 @@
+# ============================================
+# DEPLOYMENT PATCH: PRODUCTION
+# ============================================
+# Modifica recursos do deployment para produção
+# Aumenta CPU e memória para suportar maior carga
+apiVersion: apps/v1
+kind: Deployment
+
+# ============================================
+# METADADOS
+# ============================================
+metadata:
+  name: fiap-todo-api              # Deve corresponder ao deployment base
+
+# ============================================
+# ESPECIFICAÇÃO
+# ============================================
+spec:
+  template:
+    spec:
+      containers:
+      - name: api                  # Nome do container (deve corresponder)
+        
+        # ============================================
+        # RECURSOS DE PRODUÇÃO
+        # ============================================
+        # Valores maiores que a base para suportar tráfego de produção
+        resources:
+          requests:                # Recursos mínimos garantidos
+            memory: "256Mi"        # 2x da base (128Mi)
+            cpu: "200m"            # 2x da base (100m)
+          limits:                  # Limites máximos
+            memory: "512Mi"        # 2x da base (256Mi)
+            cpu: "500m"            # 2.5x da base (200m)

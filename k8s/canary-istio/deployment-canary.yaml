@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fiap-todo-canary
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fiap-todo-api
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: fiap-todo-api
+        version: v2
+    spec:
+      containers:
+      - name: api
+        image: YOUR_ECR_URI/fiap-todo-api:v2.0
+        ports:
+        - containerPort: 3000
+        env:
+        - name: VERSION
+          value: "v2.0"

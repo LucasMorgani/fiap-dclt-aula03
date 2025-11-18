@@ -1,0 +1,107 @@
+# ============================================
+# DEPLOYMENT: FIAP TODO API
+# ============================================
+# Gerencia o ciclo de vida dos pods da aplicação
+apiVersion: apps/v1
+kind: Deployment
+
+# ============================================
+# METADADOS
+# ============================================
+metadata:
+  name: fiap-todo-api              # Nome do deployment
+  labels:
+    app: fiap-todo-api             # Label principal
+    version: v1                    # Versão da aplicação
+
+# ============================================
+# ESPECIFICAÇÃO DO DEPLOYMENT
+# ============================================
+spec:
+  replicas: 2                      # Número de pods (alta disponibilidade)
+  
+  # Selector: define quais pods este deployment gerencia
+  selector:
+    matchLabels:
+      app: fiap-todo-api           # Deve corresponder aos labels do template
+  
+  # ============================================
+  # TEMPLATE DOS PODS
+  # ============================================
+  template:
+    metadata:
+      labels:
+        app: fiap-todo-api         # Label para seleção
+        version: v1                # Versão para Blue/Green
+    
+    spec:
+      # ============================================
+      # CONTAINERS
+      # ============================================
+      containers:
+      - name: fiap-todo-api        # Nome do container
+        image: YOUR_ECR_URI/fiap-todo-api:latest  # Imagem Docker (será substituída pelo Kustomize)
+        
+        # Porta exposta pelo container
+        ports:
+        - containerPort: 3000      # Porta da aplicação Node.js
+          name: http               # Nome da porta
+        
+        # ============================================
+        # VARIÁVEIS DE AMBIENTE
+        # ============================================
+        env:
+        - name: NODE_ENV
+          value: "production"      # Ambiente de produção
+        - name: PORT
+          value: "3000"            # Porta da aplicação
+        
+        # ============================================
+        # RECURSOS (CPU E MEMÓRIA)
+        # ============================================
+        resources:
+          requests:                # Recursos mínimos garantidos
+            memory: "128Mi"        # Memória mínima
+            cpu: "100m"            # 0.1 CPU (100 milicores)
+          limits:                  # Limites máximos
+            memory: "256Mi"        # Memória máxima
+            cpu: "200m"            # 0.2 CPU
+        
+        # ============================================
+        # LIVENESS PROBE
+        # ============================================
+        # Verifica se o container está vivo
+        # Se falhar, Kubernetes reinicia o pod
+        livenessProbe:
+          httpGet:
+            path: /health          # Endpoint de health check
+            port: 3000             # Porta do health check
+          initialDelaySeconds: 30  # Aguarda 30s após start
+          periodSeconds: 10        # Verifica a cada 10s
+          timeoutSeconds: 5        # Timeout de 5s
+          failureThreshold: 3      # 3 falhas = restart
+        
+        # ============================================
+        # READINESS PROBE
+        # ============================================
+        # Verifica se o container está pronto para receber tráfego
+        # Se falhar, remove do Service (não recebe tráfego)
+        readinessProbe:
+          httpGet:
+            path: /health          # Endpoint de health check
+            port: 3000             # Porta do health check
+          initialDelaySeconds: 5   # Aguarda 5s após start
+          periodSeconds: 5         # Verifica a cada 5s
+          timeoutSeconds: 3        # Timeout de 3s
+          failureThreshold: 3      # 3 falhas = not ready
+        
+        # ============================================
+        # SEGURANÇA
+        # ============================================
+        securityContext:
+          allowPrivilegeEscalation: false  # Não permite escalação de privilégios
+          runAsNonRoot: true               # Força execução como não-root
+          runAsUser: 1001                  # UID do usuário nodejs
+          capabilities:
+            drop:
+            - ALL                          # Remove todas as capabilities

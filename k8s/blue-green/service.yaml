@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fiap-todo-api
+spec:
+  type: LoadBalancer
+  selector:
+    app: fiap-todo-api
+    version: blue  # Tráfego para blue inicialmente
+  ports:
+  - port: 80
+    targetPort: 3000

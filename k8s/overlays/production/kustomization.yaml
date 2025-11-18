@@ -1,0 +1,35 @@
+# ============================================
+# KUSTOMIZATION: PRODUCTION OVERLAY
+# ============================================
+# Customizações específicas para ambiente de produção
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# ============================================
+# BASE
+# ============================================
+# Referencia a configuração base
+bases:
+  - ../../base                     # Usa manifests da pasta base
+
+# ============================================
+# PREFIX DE NOME
+# ============================================
+# Adiciona prefixo a todos os recursos
+# Útil para identificar ambiente
+namePrefix: prod-                  # Todos recursos terão "prod-" no nome
+
+# ============================================
+# RÉPLICAS
+# ============================================
+# Sobrescreve número de réplicas da base
+replicas:
+  - name: fiap-todo-api            # Nome do deployment
+    count: 3                       # 3 réplicas em produção (alta disponibilidade)
+
+# ============================================
+# PATCHES
+# ============================================
+# Aplica modificações específicas aos manifests
+patchesStrategicMerge:
+  - deployment-patch.yaml          # Aumenta recursos para produção

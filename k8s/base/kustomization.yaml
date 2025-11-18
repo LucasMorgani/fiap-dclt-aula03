@@ -1,0 +1,38 @@
+# ============================================
+# KUSTOMIZATION: BASE
+# ============================================
+# Configuração base do Kustomize
+# Será usada como base para overlays (dev, prod)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# ============================================
+# METADADOS
+# ============================================
+metadata:
+  name: fiap-todo-api-base         # Nome da kustomization
+
+# ============================================
+# RECURSOS
+# ============================================
+# Lista de manifests Kubernetes a serem gerenciados
+resources:
+- deployment.yaml                  # Deployment da aplicação
+- service.yaml                     # Service da aplicação
+
+# ============================================
+# LABELS COMUNS
+# ============================================
+# Labels aplicadas a todos os recursos
+commonLabels:
+  app: fiap-todo-api               # Identifica a aplicação
+  managed-by: kustomize            # Indica gerenciamento pelo Kustomize
+
+# ============================================
+# IMAGENS
+# ============================================
+# Configuração de imagens Docker
+# Permite substituir tags sem modificar os YAMLs
+images:
+- name: YOUR_ECR_URI/fiap-todo-api # URI da imagem (substituir pelo ECR real)
+  newTag: latest                   # Tag da imagem (será substituída no CI/CD)

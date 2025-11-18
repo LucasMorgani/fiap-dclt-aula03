@@ -1,0 +1,38 @@
+# ============================================
+# SERVICE: FIAP TODO API
+# ============================================
+# Expõe os pods como um serviço de rede
+apiVersion: v1
+kind: Service
+
+# ============================================
+# METADADOS
+# ============================================
+metadata:
+  name: fiap-todo-api-service      # Nome do serviço
+  labels:
+    app: fiap-todo-api             # Label para organização
+
+# ============================================
+# ESPECIFICAÇÃO DO SERVICE
+# ============================================
+spec:
+  type: ClusterIP                  # Tipo: interno ao cluster
+                                   # Outros tipos: LoadBalancer, NodePort
+  
+  # ============================================
+  # PORTAS
+  # ============================================
+  ports:
+  - port: 80                       # Porta exposta pelo Service
+    targetPort: 3000               # Porta do container (Node.js)
+    protocol: TCP                  # Protocolo de rede
+    name: http                     # Nome da porta
+  
+  # ============================================
+  # SELECTOR
+  # ============================================
+  # Define quais pods receberão tráfego
+  # Deve corresponder aos labels dos pods
+  selector:
+    app: fiap-todo-api             # Seleciona pods com esta label
