@@ -27,171 +27,35 @@ graph TB
 
 ---
 
-## ☘️ Parte 2: Criar Cluster EKS
+## ☘️ Parte 2: Configurar Acesso ao Cluster EKS
 
-**⚠️ Importante: Reutilizar Cluster da Aula 01**
+**⚠️ Pré-requisito: Cluster EKS da Aula 01**
 
-Se você já criou o cluster EKS na **Aula 01**, pode reutilizá-lo! Não precisa criar um novo.
+Este vídeo assume que você já tem o cluster `cicd-lab` criado na **Aula 01**.
 
-**Opções:**
+📂 Repositório: [fiap-dclt-aula01](https://github.com/josenetoo/fiap-dclt-aula01)
 
-1. **Cluster já existe e está ativo:**
-   - ✅ Pule para o **Passo 8** (Configurar kubectl)
-   - Use o mesmo cluster: `cicd-lab`
-
-2. **Cluster foi deletado:**
-   - 📚 Consulte os comandos da **Aula 01**
-   - 📂 Repositório: [fiap-dclt-aula01](https://github.com/josenetoo/fiap-dclt-aula01)
-   - Recrie o cluster usando os mesmos comandos
-
-3. **Primeira vez criando cluster:**
-   - ✅ Continue com os passos abaixo
-
-**Verificar se cluster existe:**
-```bash
-aws eks list-clusters --region us-east-1
-```
-
----
-
-### Passo 2: Arquitetura EKS
-
-```mermaid
-graph TB
-    A[AWS EKS] --> B[Control Plane]
-    A --> C[Worker Nodes]
-    
-    B --> D[API Server]
-    B --> E[Scheduler]
-    B --> F[Controller]
-    
-    C --> G[Pod 1]
-    C --> H[Pod 2]
-    C --> I[Pod 3]
-```
-
-### Passo 3: Verificar Pré-requisitos
+### Passo 2: Verificar Cluster Existente
 
 ```bash
-# Verificar AWS CLI
-aws --version
+# Verificar se cluster existe
+aws eks list-clusters --region us-east-1 --profile fiapaws
 
-# Verificar credenciais
-aws sts get-caller-identity --profile fiapaws
-
-# Verificar kubectl
-kubectl version --client
-```
-
-### Passo 4: Configurar Variáveis de Ambiente
-
-```bash
-# Definir região (us-east-1 ou us-west-2)
-export AWS_REGION=us-east-1
-# ou
-# export AWS_REGION=us-west-2
-
-# Verificar região configurada
-echo "Região selecionada: $AWS_REGION"
-
-# Obter Account ID
-export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --profile fiapaws --query Account --output text)
-echo "Account ID: $AWS_ACCOUNT_ID"
-```
-
-### Passo 5: Discovery de Subnets
-
-```bash
-# Listar todas as subnets públicas disponíveis na região
-echo "🔍 Descobrindo subnets públicas na região $AWS_REGION..."
-
-aws ec2 describe-subnets \
-  --profile fiapaws \
-  --region $AWS_REGION \
-  --filters "Name=map-public-ip-on-launch,Values=true" \
-  --query 'Subnets[*].[SubnetId,AvailabilityZone,CidrBlock]' \
-  --output table
-
-# Obter IDs das subnets públicas (mínimo 2 para EKS)
-export SUBNET_IDS=$(aws ec2 describe-subnets \
-  --profile fiapaws \
-  --region $AWS_REGION \
-  --filters "Name=map-public-ip-on-launch,Values=true" \
-  --query 'Subnets[*].SubnetId' \
-  --output text)
-
-echo "Subnets encontradas: $SUBNET_IDS"
-
-# Contar subnets
-SUBNET_COUNT=$(echo $SUBNET_IDS | wc -w | tr -d ' ')
-echo "Total de subnets públicas: $SUBNET_COUNT"
-
-# Validar (EKS precisa de no mínimo 2 subnets)
-if [ $SUBNET_COUNT -lt 2 ]; then
-  echo "❌ ERRO: EKS requer no mínimo 2 subnets. Encontradas: $SUBNET_COUNT"
-  exit 1
-else
-  echo "✅ Subnets suficientes para criar cluster EKS"
-fi
-```
-
-### Passo 6: Criar Cluster EKS
-
-```bash
-# Criar cluster EKS (AWS Learner Lab compatible)
-echo "🚀 Criando cluster EKS na região $AWS_REGION..."
-
-aws eks create-cluster \
+# Verificar status do cluster
+aws eks describe-cluster \
   --name cicd-lab \
-  --region $AWS_REGION \
-  --role-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/LabRole \
-  --resources-vpc-config subnetIds=$(echo $SUBNET_IDS | tr ' ' ',') \
-  --profile fiapaws
-
-# Aguardar cluster ativo (15-20 min)
-echo "⏳ Aguardando cluster ficar ativo (15-20 minutos)..."
-aws eks wait cluster-active \
-  --name cicd-lab \
-  --region $AWS_REGION \
-  --profile fiapaws
-
-echo "✅ Cluster ativo!"
+  --region us-east-1 \
+  --profile fiapaws \
+  --query 'cluster.status'
 ```
 
-### Passo 7: Criar Node Group
-
-```bash
-# Criar node group
-echo "🚀 Criando node group..."
-
-aws eks create-nodegroup \
-  --cluster-name cicd-lab \
-  --nodegroup-name workers \
-  --node-role arn:aws:iam::${AWS_ACCOUNT_ID}:role/LabRole \
-  --subnets $(echo $SUBNET_IDS | tr ' ' ',') \
-  --instance-types t3.medium \
-  --scaling-config minSize=2,maxSize=2,desiredSize=2 \
-  --region $AWS_REGION \
-  --profile fiapaws
-
-# Aguardar node group ativo
-echo "⏳ Aguardando node group ficar ativo..."
-aws eks wait nodegroup-active \
-  --cluster-name cicd-lab \
-  --nodegroup-name workers \
-  --region $AWS_REGION \
-  --profile fiapaws
-
-echo "✅ Node group ativo!"
-```
-
-### Passo 8: Configurar kubectl
+### Passo 3: Configurar kubectl
 
 ```bash
 # Configurar acesso ao cluster
 aws eks update-kubeconfig \
   --name cicd-lab \
-  --region $AWS_REGION \
+  --region us-east-1 \
   --profile fiapaws
 
 # Verificar nodes
@@ -205,7 +69,7 @@ kubectl get nodes -o wide
 
 ## 📦 Parte 3: Manifests Kubernetes
 
-### Passo 9: Ver Estrutura de Manifests
+### Passo 4: Ver Estrutura de Manifests
 
 ```bash
 # Ver estrutura
@@ -218,200 +82,87 @@ tree k8s/
 # │   ├── service.yaml
 # │   └── kustomization.yaml
 # └── overlays/
-#     ├── development/
 #     └── production/
 ```
 
-### Passo 10: Ver Deployment
+### Passo 5: Ver Deployment
 
 ```bash
 # Ver deployment base
 cat k8s/base/deployment.yaml
 ```
 
-**deployment.yaml:**
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: fiap-todo-api
-  labels:
-    app: fiap-todo-api
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: fiap-todo-api
-  template:
-    metadata:
-      labels:
-        app: fiap-todo-api
-    spec:
-      containers:
-      - name: api
-        image: YOUR_ECR_URI/fiap-todo-api:latest
-        ports:
-        - containerPort: 3000
-        env:
-        - name: NODE_ENV
-          value: "production"
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-```
-
-### Passo 11: Ver Service
+### Passo 6: Ver Service
 
 ```bash
 # Ver service
 cat k8s/base/service.yaml
 ```
 
-**service.yaml:**
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: fiap-todo-api
-  labels:
-    app: fiap-todo-api
-spec:
-  type: LoadBalancer
-  ports:
-  - port: 80
-    targetPort: 3000
-    protocol: TCP
-  selector:
-    app: fiap-todo-api
-```
-
 ---
 
 ## 🎨 Parte 4: Kustomize
 
-### Passo 12: Conceito Kustomize
+### Passo 7: Conceito Kustomize
+
+**Kustomize = Customização Nativa do Kubernetes** (sem templates)
 
 **Problema**: Mesma aplicação, configurações diferentes por ambiente (dev, staging, prod)
-
-**Solução Ruim**: Duplicar YAMLs para cada ambiente ❌
-**Solução Kustomize**: Base + Overlays (patches) ✅
+**Solução**: Base + Overlays (patches)
 
 ```mermaid
-graph LR
-    subgraph "Base (Comum)"
-        A[deployment.yaml<br/>2 replicas<br/>128Mi RAM]
-        B[service.yaml<br/>LoadBalancer]
+graph TB
+    subgraph "Kustomize (Estrutura)"
+        A[base/<br/>deployment.yaml<br/>service.yaml<br/>kustomization.yaml]
+        B[overlays/<br/>development/<br/>production/]
     end
     
-    subgraph "Overlay Development"
-        C[kustomization.yaml] -->|usa| A
-        C -->|usa| B
-        C -->|patch| D[+namespace: dev<br/>+image: latest]
+    subgraph "Como Funciona"
+        C[kubectl apply -k overlays/production] --> D{Kustomize}
+        A --> D
+        B --> D
     end
     
-    subgraph "Overlay Production"
-        E[kustomization.yaml] -->|usa| A
-        E -->|usa| B
-        E -->|patch| F[+namespace: prod<br/>+replicas: 5<br/>+resources: 512Mi<br/>+image: v1.2.3]
-    end
+    D --> E[Base + Patches]
+    E --> F[Manifests Finais]
+    F --> G[kubectl apply]
     
-    D --> G[Manifests Dev]
-    F --> H[Manifests Prod]
+    subgraph "Customizações"
+        H[namePrefix/Suffix]
+        I[replicas]
+        J[images]
+        K[patches]
+    end
 ```
 
-**Vantagens**:
-- ✅ DRY (Don't Repeat Yourself) - base compartilhada
-- ✅ Patches específicos por ambiente
-- ✅ Sem templates complexos
-- ✅ Nativo do Kubernetes
+**Kustomize vs Helm**:
+- **Kustomize**: Patches em YAMLs existentes (mais simples, nativo)
+- **Helm**: Templates com variáveis (mais poderoso, reutilizável)
 
-### Passo 13: Ver Kustomization Base
+**Quando usar Kustomize?**
+- ✅ Múltiplos ambientes (dev, staging, prod)
+- ✅ Customizações simples (replicas, images, labels)
+- ✅ Sem necessidade de templates complexos
+- ✅ Já vem integrado com kubectl (`kubectl apply -k`)
+
+### Passo 8: Ver Kustomization Base
 
 ```bash
 # Ver kustomization base
 cat k8s/base/kustomization.yaml
 ```
 
-**kustomization.yaml:**
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - deployment.yaml
-  - service.yaml
-
-commonLabels:
-  app: fiap-todo-api
-  managed-by: kustomize
-```
-
-### Passo 14: Criar Overlay Production
+### Passo 9: Ver Overlay Production
 
 ```bash
 # Ver overlay production
 cat k8s/overlays/production/kustomization.yaml
+
+# Ver patch de deployment
+cat k8s/overlays/production/deployment-patch.yaml
 ```
 
-**overlays/production/kustomization.yaml:**
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-bases:
-  - ../../base
-
-namePrefix: prod-
-
-replicas:
-  - name: fiap-todo-api
-    count: 3
-
-images:
-  - name: YOUR_ECR_URI/fiap-todo-api
-    newTag: latest
-
-patchesStrategicMerge:
-  - deployment-patch.yaml
-```
-
-**deployment-patch.yaml:**
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: fiap-todo-api
-spec:
-  template:
-    spec:
-      containers:
-      - name: api
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "200m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-```
-
-### Passo 15: Build e Deploy com Kustomize
+### Passo 10: Build e Deploy com Kustomize
 
 ```bash
 # Build manifests
@@ -433,7 +184,7 @@ kubectl logs -l app=fiap-todo-api --tail=50
 
 ## ⚓ Parte 5: Helm
 
-### Passo 16: Conceito Helm
+### Passo 11: Conceito Helm
 
 **Helm = Package Manager do Kubernetes** (como apt, yum, npm)
 
@@ -474,7 +225,7 @@ graph TB
 - ✅ Versionamento e rollback de releases
 - ✅ Repositórios de charts (Helm Hub)
 
-### Passo 17: Criar Helm Chart
+### Passo 12: Criar Helm Chart
 
 ```bash
 # Criar chart
@@ -490,7 +241,7 @@ helm create fiap-todo-chart
 #     └── ingress.yaml
 ```
 
-### Passo 18: Configurar values.yaml
+### Passo 13: Configurar values.yaml
 
 **O `helm create` gera um values.yaml completo. Vamos customizar apenas o necessário:**
 
@@ -586,7 +337,7 @@ EOF
 - Se faltar algum campo, você terá erro de "nil pointer"
 - Campos vazios (`{}` ou `[]`) são válidos e desabilitam a funcionalidade
 
-### Passo 19: Deploy com Helm
+### Passo 14: Deploy com Helm
 
 ```bash
 # Install chart
@@ -612,7 +363,7 @@ helm rollback fiap-todo 1
 
 ## 🚀 Parte 6: Pipeline de Deploy
 
-### Passo 20: Configurar Secrets do GitHub
+### Passo 15: Configurar Secrets do GitHub
 
 **Antes de criar o workflow, precisamos adicionar os secrets necessários:**
 
@@ -653,7 +404,7 @@ aws eks list-clusters --region us-east-1
 
 ---
 
-### Passo 21: Fluxo do Pipeline
+### Passo 16: Fluxo do Pipeline
 
 ```mermaid
 graph LR
@@ -665,7 +416,7 @@ graph LR
     F --> G[Smoke Test]
 ```
 
-### Passo 22: Criar Workflow de Deploy (Faremos juntos na aula)
+### Passo 17: Criar Workflow de Deploy (Faremos juntos na aula)
 
 **Vamos criar o workflow durante a aula:**
 
@@ -897,30 +648,9 @@ jobs:
 "@ | Out-File -FilePath .github/workflows/k8s-deploy.yml -Encoding UTF8
 ```
 
-**Explicação do workflow:**
-- ✅ **Trigger**: Executa após Docker Build ou manualmente
-- ✅ **AWS Auth**: Usa Access Keys do Learner Lab
-- ✅ **Kubeconfig**: Atualiza configuração do EKS
-- ✅ **Kustomize**: Atualiza tag da imagem dinamicamente
-- ✅ **Deploy**: Aplica manifests com kubectl
-- ✅ **Smoke Test**: Testa endpoint /health
-- ✅ **Summary**: Mostra status no GitHub Actions
-
-**⚠️ Notas importantes:**
-- No Windows, use `` ` `` (backtick) para escapar `$` nas variáveis do GitHub Actions
-- O workflow roda em `ubuntu-latest` (mesmo criando no Windows)
-- Kustomize atualiza a tag da imagem antes do deploy
-
-**💡 Sobre o Smoke Test:**
-- ✅ **Opcional**: Usa `continue-on-error: true` (não falha o pipeline)
-- ⏱️ **Timeout**: Aguarda até 2 minutos pelo LoadBalancer
-- ⚠️ **LoadBalancer demora**: AWS pode levar 3-5 minutos para provisionar
-- 📝 **Mensagem clara**: Indica se precisa verificar manualmente
-- 🎯 **Objetivo**: Validar deploy quando possível, mas não bloquear
-
 ---
 
-### Passo 23: Commit do Workflow
+### Passo 18: Commit do Workflow
 
 **Agora vamos adicionar o workflow ao repositório:**
 
@@ -953,7 +683,7 @@ git push origin main
 
 ## 🧪 Parte 7: Testar Deploy
 
-### Passo 25: Trigger Deploy
+### Passo 19: Trigger Deploy
 
 ```bash
 # Fazer mudança na aplicação
@@ -969,7 +699,7 @@ git push origin main
 # 2. Deploy to Kubernetes (inicia automaticamente)
 ```
 
-### Passo 26: Verificar Deploy
+### Passo 20: Verificar Deploy
 
 ```bash
 # Ver pods
@@ -999,7 +729,7 @@ curl -X POST http://$LB_URL/api/todos \
 
 ## 🎓 Parte 8: Conceitos Aprendidos
 
-### Passo 27: Fluxo Completo
+### Passo 21: Fluxo Completo
 
 ```mermaid
 graph LR
@@ -1010,11 +740,10 @@ graph LR
 ```
 
 **O que aprendemos:**
-- ✅ Criar cluster EKS com AWS CLI (AWS Learner Lab)
 - ✅ Manifests Kubernetes (Deployment, Service)
-- ✅ Kustomize para múltiplos ambientes
+- ✅ Kustomize para múltiplos ambientes (Base + Overlays)
 - ✅ Helm charts para templating
-- ✅ Pipeline de deploy automatizado
+- ✅ Pipeline de deploy automatizado (GitHub Actions)
 - ✅ Smoke tests pós-deploy
 - ✅ LoadBalancer para acesso externo
 
