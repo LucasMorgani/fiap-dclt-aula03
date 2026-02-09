@@ -72,3 +72,4 @@ jobs:
           echo "- \`latest\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`v1.${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+
