@@ -105,3 +105,4 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           kubectl get pods -l app=fiap-todo-api >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+
