@@ -90,4 +90,3 @@ LABEL maintainer="FIAP DevOps Course" \
 # ============================================
 # Inicia a aplicação Node.js
 CMD ["npm", "start"]
-
