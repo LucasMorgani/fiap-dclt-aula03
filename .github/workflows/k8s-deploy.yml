@@ -9,7 +9,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  CLUSTER_NAME: cicd-lab
+  CLUSTER_NAME: togglemaster_project-cluster
 
 jobs:
   deploy:
