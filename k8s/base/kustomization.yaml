@@ -37,5 +37,5 @@ commonLabels:
 # O "newName" é a imagem real no ECR
 images:
 - name: fiap-todo-api              # Nome do placeholder no deployment.yaml
-  newName: 777870534201.dkr.ecr.us-east-1.amazonaws.com/fiap-todo-api  # URI real do ECR
+  newName: 304175362321.dkr.ecr.us-east-1.amazonaws.com/fiap-todo-api  # URI real do ECR
   newTag: latest                   # Tag da imagem (será substituída no CI/CD)
