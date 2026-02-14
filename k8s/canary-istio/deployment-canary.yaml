@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: 777870534201.dkr.ecr.us-east-1.amazonaws.com/fiap-todo-api:latest
+        image: 304175362321.dkr.ecr.us-east-1.amazonaws.com/fiap-todo-api:latest
         ports:
         - containerPort: 3000
         env:
