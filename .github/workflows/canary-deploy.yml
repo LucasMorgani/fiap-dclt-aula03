@@ -41,7 +41,7 @@ jobs:
       
       - name: ☸️ Update kubeconfig
         run: |
-          aws eks update-kubeconfig --name cicd-lab --region us-east-1
+          aws eks update-kubeconfig --name togglemaster_project-cluster --region us-east-1
       
       - name: 🐤 Adjust Canary Traffic
         if: github.event.inputs.action == 'deploy'
